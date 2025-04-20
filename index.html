@@ -29,21 +29,37 @@
       margin-top: 20px;
       font-size: 16px;
     }
+    .section {
+      margin-top: 30px;
+    }
   </style>
 </head>
 <body>
   <h1>NeuroBand Control</h1>
-  <button id="connectBtn">🔗 Connect</button><br>
-  <button class="modeBtn" onclick="startSession('start:focus')">🎯 Focus</button>
-  <button class="modeBtn" onclick="startSession('start:calm')">🧘 Calm</button>
-  <button class="modeBtn" onclick="startSession('start:energy')">⚡ Energy</button>
-  <button class="modeBtn" onclick="stopSession()">⛔ Stop</button><br>
-  <button class="timerBtn" onclick="setSessionTime(5)">🕒 5 min</button>
-  <button class="timerBtn" onclick="setSessionTime(10)">🕒 10 min</button>
-  <button class="timerBtn" onclick="setSessionTime(15)">🕒 15 min</button>
-  <button class="timerBtn" onclick="setSessionTime(20)">🕒 20 min</button><br>
-  <button class="controlBtn" onclick="pauseTimer()">⏸ Pause</button>
-  <button class="controlBtn" onclick="resumeTimer()">▶️ Resume</button>
+
+  <button id="connectBtn">🔗 Connect</button>
+
+  <div class="section">
+    <h2>Mode</h2>
+    <button class="modeBtn" onclick="selectMode('start:focus')">🎯 Focus</button>
+    <button class="modeBtn" onclick="selectMode('start:calm')">🧘 Calm</button>
+    <button class="modeBtn" onclick="selectMode('start:energy')">⚡ Energy</button>
+  </div>
+
+  <div class="section">
+    <h2>Length</h2>
+    <button class="timerBtn" onclick="setSessionTime(5)">🕒 5 min</button>
+    <button class="timerBtn" onclick="setSessionTime(10)">🕒 10 min</button>
+    <button class="timerBtn" onclick="setSessionTime(15)">🕒 15 min</button>
+    <button class="timerBtn" onclick="setSessionTime(20)">🕒 20 min</button>
+  </div>
+
+  <div class="section">
+    <button id="startBtn" class="controlBtn" onclick="startSession()">▶️ Start</button>
+    <button id="pauseBtn" class="controlBtn" onclick="pauseTimer()" style="display:none;">⏸ Pause</button>
+    <button id="resumeBtn" class="controlBtn" onclick="resumeTimer()" style="display:none;">▶️ Continue</button>
+    <button class="controlBtn" onclick="stopSession()">⛔ Stop</button>
+  </div>
 
   <div id="status">Status: Not connected</div>
   <div id="timer">Timer: --:--</div>
@@ -51,6 +67,7 @@
   <script>
     let device, server, characteristic;
     let sessionTimer, timeLeft = 0, sessionRunning = false;
+    let selectedCommand = null;
 
     document.getElementById('connectBtn').addEventListener('click', async () => {
       try {
@@ -68,22 +85,32 @@
       }
     });
 
+    function selectMode(command) {
+      selectedCommand = command;
+      document.getElementById('status').innerText = `Mode selected: ${command.split(':')[1]}`;
+    }
+
     function setSessionTime(minutes) {
       timeLeft = minutes * 60;
       updateTimerDisplay();
+      document.getElementById('status').innerText = `Timer set to ${minutes} minutes`;
     }
 
-    async function startSession(command) {
-      if (!characteristic) {
-        alert('Please connect to NeuroBand first!');
+    async function startSession() {
+      if (!characteristic || !selectedCommand || timeLeft === 0) {
+        alert('Please make sure you are connected, have selected a mode and a time.');
         return;
       }
       const encoder = new TextEncoder();
-      await characteristic.writeValue(encoder.encode(command));
-      document.getElementById('status').innerText = `Status: Sent "${command}" ✅`;
+      await characteristic.writeValue(encoder.encode(selectedCommand));
+      document.getElementById('status').innerText = `Status: Sent "${selectedCommand}" ✅`;
 
       clearInterval(sessionTimer);
       sessionRunning = true;
+      document.getElementById('startBtn').style.display = 'none';
+      document.getElementById('pauseBtn').style.display = 'inline-block';
+      document.getElementById('resumeBtn').style.display = 'none';
+
       sessionTimer = setInterval(() => {
         if (timeLeft > 0 && sessionRunning) {
           timeLeft--;
@@ -92,6 +119,7 @@
           clearInterval(sessionTimer);
           document.getElementById('timer').innerText = 'Timer: Session complete ✅';
           sessionRunning = false;
+          document.getElementById('pauseBtn').style.display = 'none';
         }
       }, 1000);
     }
@@ -107,16 +135,23 @@
       clearInterval(sessionTimer);
       document.getElementById('timer').innerText = 'Timer: --:--';
       sessionRunning = false;
+      document.getElementById('startBtn').style.display = 'inline-block';
+      document.getElementById('pauseBtn').style.display = 'none';
+      document.getElementById('resumeBtn').style.display = 'none';
     }
 
     function pauseTimer() {
       sessionRunning = false;
+      document.getElementById('pauseBtn').style.display = 'none';
+      document.getElementById('resumeBtn').style.display = 'inline-block';
       document.getElementById('status').innerText = 'Status: Timer paused ⏸';
     }
 
     function resumeTimer() {
       if (timeLeft > 0) {
         sessionRunning = true;
+        document.getElementById('pauseBtn').style.display = 'inline-block';
+        document.getElementById('resumeBtn').style.display = 'none';
         document.getElementById('status').innerText = 'Status: Timer resumed ▶️';
       }
     }
@@ -129,3 +164,4 @@
   </script>
 </body>
 </html>
+
