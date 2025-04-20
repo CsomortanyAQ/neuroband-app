@@ -22,10 +22,10 @@
       background-color: #007AFF;
       color: white;
     }
-    .modeBtn {
+    .modeBtn, .timerBtn, .controlBtn {
       background-color: #f2f2f2;
     }
-    #status {
+    #status, #timer {
       margin-top: 20px;
       font-size: 16px;
     }
@@ -34,14 +34,23 @@
 <body>
   <h1>NeuroBand Control</h1>
   <button id="connectBtn">🔗 Connect</button><br>
-  <button class="modeBtn" onclick="sendCommand('start:focus')">🎯 Focus</button>
-  <button class="modeBtn" onclick="sendCommand('start:calm')">🧘 Calm</button>
-  <button class="modeBtn" onclick="sendCommand('start:energy')">⚡ Energy</button>
-  <button class="modeBtn" onclick="sendCommand('stop')">⛔ Stop</button>
+  <button class="modeBtn" onclick="startSession('start:focus')">🎯 Focus</button>
+  <button class="modeBtn" onclick="startSession('start:calm')">🧘 Calm</button>
+  <button class="modeBtn" onclick="startSession('start:energy')">⚡ Energy</button>
+  <button class="modeBtn" onclick="stopSession()">⛔ Stop</button><br>
+  <button class="timerBtn" onclick="setSessionTime(5)">🕒 5 min</button>
+  <button class="timerBtn" onclick="setSessionTime(10)">🕒 10 min</button>
+  <button class="timerBtn" onclick="setSessionTime(15)">🕒 15 min</button>
+  <button class="timerBtn" onclick="setSessionTime(20)">🕒 20 min</button><br>
+  <button class="controlBtn" onclick="pauseTimer()">⏸ Pause</button>
+  <button class="controlBtn" onclick="resumeTimer()">▶️ Resume</button>
+
   <div id="status">Status: Not connected</div>
+  <div id="timer">Timer: --:--</div>
 
   <script>
     let device, server, characteristic;
+    let sessionTimer, timeLeft = 0, sessionRunning = false;
 
     document.getElementById('connectBtn').addEventListener('click', async () => {
       try {
@@ -59,7 +68,12 @@
       }
     });
 
-    async function sendCommand(command) {
+    function setSessionTime(minutes) {
+      timeLeft = minutes * 60;
+      updateTimerDisplay();
+    }
+
+    async function startSession(command) {
       if (!characteristic) {
         alert('Please connect to NeuroBand first!');
         return;
@@ -67,6 +81,50 @@
       const encoder = new TextEncoder();
       await characteristic.writeValue(encoder.encode(command));
       document.getElementById('status').innerText = `Status: Sent "${command}" ✅`;
+
+      clearInterval(sessionTimer);
+      sessionRunning = true;
+      sessionTimer = setInterval(() => {
+        if (timeLeft > 0 && sessionRunning) {
+          timeLeft--;
+          updateTimerDisplay();
+        } else if (timeLeft === 0) {
+          clearInterval(sessionTimer);
+          document.getElementById('timer').innerText = 'Timer: Session complete ✅';
+          sessionRunning = false;
+        }
+      }, 1000);
+    }
+
+    async function stopSession() {
+      if (!characteristic) {
+        alert('Please connect to NeuroBand first!');
+        return;
+      }
+      const encoder = new TextEncoder();
+      await characteristic.writeValue(encoder.encode('stop'));
+      document.getElementById('status').innerText = 'Status: Sent "stop" ✅';
+      clearInterval(sessionTimer);
+      document.getElementById('timer').innerText = 'Timer: --:--';
+      sessionRunning = false;
+    }
+
+    function pauseTimer() {
+      sessionRunning = false;
+      document.getElementById('status').innerText = 'Status: Timer paused ⏸';
+    }
+
+    function resumeTimer() {
+      if (timeLeft > 0) {
+        sessionRunning = true;
+        document.getElementById('status').innerText = 'Status: Timer resumed ▶️';
+      }
+    }
+
+    function updateTimerDisplay() {
+      const minutes = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+      const seconds = String(timeLeft % 60).padStart(2, '0');
+      document.getElementById('timer').innerText = `Timer: ${minutes}:${seconds}`;
     }
   </script>
 </body>
