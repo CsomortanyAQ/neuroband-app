@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NeuroBand BLE App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 40px;
+    }
+    button {
+      padding: 15px 25px;
+      margin: 10px;
+      font-size: 18px;
+      border-radius: 10px;
+      border: none;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      cursor: pointer;
+    }
+    #connectBtn {
+      background-color: #007AFF;
+      color: white;
+    }
+    .modeBtn {
+      background-color: #f2f2f2;
+    }
+    #status {
+      margin-top: 20px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>NeuroBand Control</h1>
+  <button id="connectBtn">🔗 Connect</button><br>
+  <button class="modeBtn" onclick="sendCommand('start:focus')">🎯 Focus</button>
+  <button class="modeBtn" onclick="sendCommand('start:calm')">🧘 Calm</button>
+  <button class="modeBtn" onclick="sendCommand('start:energy')">⚡ Energy</button>
+  <button class="modeBtn" onclick="sendCommand('stop')">⛔ Stop</button>
+  <div id="status">Status: Not connected</div>
+
+  <script>
+    let device, server, characteristic;
+
+    document.getElementById('connectBtn').addEventListener('click', async () => {
+      try {
+        device = await navigator.bluetooth.requestDevice({
+          filters: [{ name: 'NeuroBand' }],
+          optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
+        });
+        server = await device.gatt.connect();
+        const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+        characteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+        document.getElementById('status').innerText = 'Status: Connected to NeuroBand ✅';
+      } catch (error) {
+        console.error(error);
+        document.getElementById('status').innerText = 'Status: Connection failed ❌';
+      }
+    });
+
+    async function sendCommand(command) {
+      if (!characteristic) {
+        alert('Please connect to NeuroBand first!');
+        return;
+      }
+      const encoder = new TextEncoder();
+      await characteristic.writeValue(encoder.encode(command));
+      document.getElementById('status').innerText = `Status: Sent "${command}" ✅`;
+    }
+  </script>
+</body>
+</html>
